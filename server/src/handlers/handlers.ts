@@ -4,7 +4,7 @@ import Blog from "../models/Blog";
 import Comment from "../models/Comment"
 import { BlogType, UserType, CommentType } from "../schema/schema";
 import { Document } from "mongoose";
-import { hashSync } from "bcryptjs";
+import { hashSync, compareSync } from "bcryptjs";
 
 const RootQuery = new GraphQLObjectType({
     name: "RootQuery",
@@ -59,6 +59,32 @@ const mutation = new GraphQLObjectType({
                 }
             },
         },
-}
+        //user login
+        login: {
+            type: UserType,
+            args: {
+                email: { type: GraphQLNonNull(GraphQLString) },
+                password: { type: GraphQLNonNull(GraphQLString) },
+            },
+            async resolve(parent, { email, password }) {
+                let existingUser: Document<any, any, any>;
+                try {
+                    existingUser = await User.findOne({ email });
+                    if (!existingUser)
+                        return new Error("login credentials failed");
+                    const pwvalidation = compareSync(
+                        password,
+                        // @ts-ignore
+                        existingUser?.password
+                    ); 
+                    if(!pwvalidation) return new Error("login credentials failed");
+                    return existingUser;
+                } catch (err) {
+                    return new Error(err)
+
+                }
+            },
+        }
+    }
 });
 export default new GraphQLSchema({ query: RootQuery, mutation: mutation });
